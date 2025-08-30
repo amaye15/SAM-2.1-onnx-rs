@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 
-# Small, useful tools and certs (for HEALTHCHECK)
+# Small, useful tools and certs (for HEALTHCHECK and downloads)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
@@ -39,8 +39,13 @@ RUN apt-get update \
 COPY --from=builder /app/target/release/sam2_server /usr/local/bin/sam2_server
 COPY sam2_server/static ./sam2_server/static
 
-# Copy ONNX models to workdir root (the server expects them next to /app)
-COPY sam2_large.onnx sam2_small.onnx sam2_base_plus.onnx sam2_tiny.onnx ./
+# Download ONNX models from Hugging Face model repo into workdir root
+ENV MODEL_REPO=amaye15/sam2-onnx MODEL_REV=main
+RUN set -eux; \
+    curl -L -o sam2_large.onnx      "https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REV}/sam2_large.onnx" && \
+    curl -L -o sam2_small.onnx      "https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REV}/sam2_small.onnx" && \
+    curl -L -o sam2_base_plus.onnx  "https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REV}/sam2_base_plus.onnx" && \
+    curl -L -o sam2_tiny.onnx       "https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REV}/sam2_tiny.onnx"
 
 # Run as non-root
 RUN useradd -r -u 10001 -g root -d /nonexistent -s /usr/sbin/nologin appuser \

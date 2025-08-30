@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SAM2 Rust Demo</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --surface: #0f172a;
+      --surface-2: #0b1220;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #1f2937;
+      --primary: #3b82f6;
+      --primary-600: #2563eb;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      background: radial-gradient(1200px 800px at 15% -10%, #0c1326, #070b16);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #0e162b, #0f172a);
+      color: white;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    }
+
+    header h2 { font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
+
+    header nav a {
+      color: #93c5fd;
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 8px;
+      transition: background .15s ease, color .15s ease;
+    }
+    header nav a:hover {
+      background: rgba(147,197,253,0.15);
+      color: #bfdbfe;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .panel {
+      background: var(--surface);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+      min-width: 0;
+    }
+
+    /* Allow canvas panel to scroll horizontally on narrow screens without scaling the canvas */
+    .panel:last-child { overflow: auto; }
+
+    #canvasWrap {
+      position: relative;
+      width: 1024px;
+      height: 1024px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(0,0,0,.35);
+      background: #0a0f1c;
+      border: 1px solid var(--border);
+    }
+
+    canvas { position: absolute; left: 0; top: 0; border-radius: 8px; }
+    #overlay { cursor: crosshair; }
+
+    .row {
+      margin: 12px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* Structured rows */
+    .row-model label { display: flex; align-items: center; gap: 12px; font-size: 18px; }
+    .row-model select { min-width: 200px; }
+
+    .row-file { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .row-file input[type="file"] { width: 100%; }
+
+    .row-actions { display: flex; gap: 12px; }
+    /* Push Run to the right for better grouping */
+    .row-actions #btnRun { margin-left: auto; }
+
+    .row-mode { margin-top: 8px; }
+
+    .metrics-row { display: grid; grid-template-columns: 1fr; row-gap: 10px; }
+    .metrics-row .time-stat { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+    .metrics-row .iou-stat { display: flex; align-items: center; gap: 10px; }
+    .metrics-row .download-wrap #btnDownload { width: 100%; }
+
+    .points {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 60px;
+    }
+
+    .point-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      background: rgba(148,163,184,0.08);
+      border-radius: 6px;
+      border-left: 3px solid;
+    }
+
+    .point-item.positive { border-left-color: #10b981; }
+    .point-item.negative { border-left-color: #ef4444; }
+
+    .point-coords {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .point-label {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .point-label.positive {
+      background: rgba(16,185,129,0.2);
+      color: #10b981;
+    }
+
+    .point-label.negative {
+      background: rgba(239,68,68,0.2);
+      color: #ef4444;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(226,232,240,0.12);
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 8px;
+      font-size: 12px;
+      color: #e2e8f0;
+      border: 1px solid rgba(148,163,184,0.25);
+    }
+
+    button {
+      cursor: pointer;
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: var(--primary);
+      color: white;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      transition: transform .05s ease, filter .15s ease, background .15s ease, border-color .15s ease;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:active { transform: translateY(1px); }
+
+    /* Button variants by ID (no HTML changes) */
+    #btnRun { background: var(--primary); }
+    #btnSample { background: #334155; color: #e2e8f0; }
+    #btnClear { background: transparent; color: #e2e8f0; border-color: var(--border); }
+    #btnClear:hover { background: rgba(148,163,184,0.10); }
+    #btnDownload { background: transparent; color: var(--primary); border-color: rgba(59,130,246,0.6); }
+    #btnDownload[disabled] { color: var(--muted); border-color: var(--border); opacity: .6; cursor: not-allowed; }
+
+    /* Inputs */
+    select, input[type="file"] {
+      background: var(--surface-2);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    /* Themed file input button */
+    input[type="file"]::file-selector-button {
+      margin-right: 10px;
+      appearance: none;
+      border: 1px solid rgba(59,130,246,0.5);
+      background: var(--primary);
+      color: white;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter .15s ease, transform .05s ease;
+    }
+    input[type="file"]::file-selector-button:hover { filter: brightness(1.05); }
+    input[type="file"]::file-selector-button:active { transform: translateY(1px); }
+    /* Safari/WebKit fallback */
+    input[type="file"]::-webkit-file-upload-button {
+      margin-right: 10px;
+      appearance: none;
+      border: 1px solid rgba(59,130,246,0.5);
+      background: var(--primary);
+      color: white;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter .15s ease, transform .05s ease;
+    }
+    input[type="file"]:hover::-webkit-file-upload-button { filter: brightness(1.05); }
+    input[type="file"]:active::-webkit-file-upload-button { transform: translateY(1px); }
+
+    /* IoU chips */
+    #iou { display: inline-flex; gap: 6px; flex-wrap: wrap; vertical-align: middle; margin-left: 6px; }
+    .iou-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.35);
+      color: #93c5fd;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    /* Radio segmented control styling (keeps original markup) */
+    .row:has(input[type="radio"]) {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+      width: fit-content;
+      gap: 6px;
+    }
+    label:has(> input[type="radio"]) {
+      position: relative;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--muted);
+      user-select: none;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+    }
+    label:has(> input[type="radio"]:checked) {
+      background: rgba(59,130,246,0.15);
+      color: var(--text);
+      border-color: rgba(59,130,246,0.4);
+    }
+    label > input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0; height: 0;
+    }
+
+    /* Focus states */
+    a:focus-visible, button:focus-visible, select:focus-visible, input[type="file"]:focus-visible, label:focus-within {
+      outline: 2px solid #60a5fa;
+      outline-offset: 2px;
+    }
+
+    /* Responsive: stack panels on narrower screens without scaling canvases */
+    @media (max-width: 1280px) {
+      .container { grid-template-columns: 1fr; }
+      .panel:last-child { padding-bottom: 12px; }
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <h2 style="margin:0;">SAM2 Rust Demo <span class="badge" id="status">idle</span></h2>
+    <nav style="display:flex; gap:10px; align-items:center;">
+      <a href="/docs" target="_blank" style="color:#93c5fd; text-decoration:none;">API Docs</a>
+    </nav>
+  </header>
+  <div class="container">
+    <div class="panel">
+      <div class="row row-model">
+        <label>Model:
+          <select id="model">
+            <option value="Tiny">Tiny</option>
+            <option value="Small">Small</option>
+            <option value="BasePlus">BasePlus</option>
+            <option value="Large" selected>Large</option>
+          </select>
+        </label>
+      </div>
+      <div class="row row-file">
+        <input type="file" id="file" accept="image/*" />
+      </div>
+      <div class="row row-actions">
+        <button id="btnSample">Load Sample</button>
+        <button id="btnClear">Clear Points</button>
+        <button id="btnRun">Run</button>
+      </div>
+      <div class="row row-mode">
+        <label><input type="radio" name="mode" value="pos" checked /> Positive</label>
+        <label><input type="radio" name="mode" value="neg" /> Negative</label>
+      </div>
+      <div class="row metrics-row">
+        <div class="time-stat">Inference time: <span id="time">-</span> ms</div>
+        <div class="iou-stat">IoU: <span id="iou">-</span></div>
+        <div class="download-wrap"><button id="btnDownload" disabled>Download Masked Region</button></div>
+      </div>
+      <div class="row">
+        <div class="points" id="points"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div id="canvasWrap">
+        <canvas id="img" width="1024" height="1024"></canvas>
+        <canvas id="overlay" width="1024" height="1024"></canvas>
+      </div>
+    </div>
+  </div>
+  <script>
+    const imgCanvas = document.getElementById('img');
+    const ovCanvas = document.getElementById('overlay');
+    const imgCtx = imgCanvas.getContext('2d');
+    const ovCtx = ovCanvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const fileEl = document.getElementById('file');
+    const modelEl = document.getElementById('model');
+    const pointsEl = document.getElementById('points');
+    const timeEl = document.getElementById('time');
+    const iouEl = document.getElementById('iou');
+
+    let imageBitmap = null;
+    let points = [];
+
+    function setStatus(s){ statusEl.textContent = s; }
+
+    async function loadSample(){
+      const src = '/image.jpg';
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = src;
+      await img.decode();
+      imageBitmap = await createImageBitmap(img);
+      drawImageToCanvas();
+    }
+
+    function drawImageToCanvas(){
+      if(!imageBitmap) return;
+      // letterbox into 1024x1024
+      imgCtx.clearRect(0,0,1024,1024);
+      ovCtx.clearRect(0,0,1024,1024);
+      const s = Math.min(1024 / imageBitmap.width, 1024 / imageBitmap.height);
+      const w = Math.round(imageBitmap.width * s);
+      const h = Math.round(imageBitmap.height * s);
+      const x = (1024 - w) / 2;
+      const y = (1024 - h) / 2;
+      imgCtx.drawImage(imageBitmap, x, y, w, h);
+    }
+
+    function updatePointsList(){
+      // Render point list as styled items (no scrolling)
+      pointsEl.innerHTML = '';
+      ovCtx.clearRect(0,0,1024,1024);
+      for(const p of points){
+        // Draw points on overlay
+        ovCtx.fillStyle = p.label === 1 ? 'rgba(0, 200, 0, 0.8)' : 'rgba(200, 0, 0, 0.8)';
+        ovCtx.beginPath(); ovCtx.arc(p.x, p.y, 4, 0, Math.PI*2); ovCtx.fill();
+        // Add to list UI
+        const item = document.createElement('div');
+        item.className = 'point-item ' + (p.label === 1 ? 'positive' : 'negative');
+        const coords = document.createElement('span');
+        coords.className = 'point-coords';
+        coords.textContent = `(${Math.round(p.x)}, ${Math.round(p.y)})`;
+        const label = document.createElement('span');
+        label.className = 'point-label ' + (p.label === 1 ? 'positive' : 'negative');
+        label.textContent = p.label === 1 ? 'Positive' : 'Negative';
+        item.append(coords, label);
+        pointsEl.appendChild(item);
+      }
+    }
+
+    ovCanvas.addEventListener('click', (e)=>{
+      if(!imageBitmap) return;
+      const rect = ovCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const label = document.querySelector('input[name="mode"]:checked').value === 'pos' ? 1 : 0;
+      points.push({x, y, label});
+      updatePointsList();
+    });
+
+    document.getElementById('btnClear').onclick = ()=>{ points = []; updatePointsList(); };
+    document.getElementById('btnSample').onclick = ()=> loadSample();
+
+    fileEl.addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await img.decode();
+      imageBitmap = await createImageBitmap(img);
+      drawImageToCanvas();
+    });
+
+    document.getElementById('btnRun').onclick = async ()=>{
+      if(!imageBitmap){ alert('Load an image first'); return; }
+      if(points.length === 0){ alert('Add at least one point'); return; }
+      setStatus('running');
+      // Convert current image canvas to base64 PNG (avoid spreading large arrays)
+      const dataUrl = imgCanvas.toDataURL('image/png');
+      const b64 = dataUrl.split(',')[1];
+      const payload = {
+        model: modelEl.value,
+        points,
+        image_b64: b64
+      };
+      const t0 = performance.now();
+      const resp = await fetch('/api/segment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        console.error('segment failed', resp.status, txt);
+        setStatus('error');
+        alert('Segmentation failed: ' + (txt || resp.status));
+        return;
+      }
+      const json = await resp.json();
+      const t1 = performance.now();
+      timeEl.textContent = Math.round(json.inference_ms ?? (t1 - t0));
+      // Render IoU as chips with 3 decimal places
+      const ious = Array.isArray(json.iou) ? json.iou : [];
+      iouEl.innerHTML = '';
+      for (const v of ious) {
+        const chip = document.createElement('span');
+        chip.className = 'iou-chip';
+        const num = typeof v === 'number' ? v : parseFloat(v);
+        chip.textContent = Number.isFinite(num) ? num.toFixed(3) : String(v);
+        iouEl.appendChild(chip);
+      }
+      // Draw mask overlay
+      if (!json.mask_png_b64 || typeof json.mask_png_b64 !== 'string' || json.mask_png_b64.length < 100) {
+        console.warn('No valid mask returned');
+        setStatus('idle');
+        return;
+      }
+      const maskPng = 'data:image/png;base64,' + json.mask_png_b64;
+      const maskImg = new Image();
+      maskImg.src = maskPng;
+      try {
+        await maskImg.decode();
+        ovCtx.clearRect(0,0,1024,1024);
+        ovCtx.globalAlpha = 1.0; // overlay PNG has its own alpha
+        ovCtx.drawImage(maskImg, 0, 0, 1024, 1024);
+      } catch (e) {
+        console.error('mask decode error', e);
+        setStatus('error');
+        alert('Mask image could not be decoded.');
+        return;
+      }
+      // Enable masked region download if available
+      const btn = document.getElementById('btnDownload');
+      if (json.masked_region_png_b64) {
+        btn.disabled = false;
+        btn.onclick = ()=>{
+          const a = document.createElement('a');
+          a.href = 'data:image/png;base64,' + json.masked_region_png_b64;
+          a.download = 'masked_region.png';
+          a.click();
+        };
+      } else {
+        btn.disabled = true;
+      }
+      setStatus('idle');
+    };
+
+    // Init
+    setStatus('ready');
+    updatePointsList();
+  </script>
+</body>
+</html>
+

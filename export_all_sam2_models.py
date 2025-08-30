@@ -15,8 +15,10 @@ import onnx
 import onnxruntime as ort
 from huggingface_hub import snapshot_download
 
-# Add the sam2 directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'sam2'))
+# Ensure repository root (which contains the local 'sam2' package) is on sys.path
+_REPO_ROOT = os.path.dirname(__file__)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor

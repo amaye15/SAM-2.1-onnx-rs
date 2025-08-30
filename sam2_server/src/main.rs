@@ -426,7 +426,7 @@ async fn main() -> Result<()> {
         .layer(prometheus_layer)
         .with_state(state);
 
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 8080));
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 8080));
     info!("server listening on http://{}", addr);
     axum::serve(tokio::net::TcpListener::bind(addr).await?, app).await?;
     Ok(())

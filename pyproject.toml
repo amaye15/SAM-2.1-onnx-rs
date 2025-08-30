@@ -6,10 +6,9 @@ authors = [{ name = "Your Name" }]
 requires-python = ">=3.10"
 license = { text = "MIT" }
 
-# Core runtime dependencies inferred from the codebase
-# Torch and video IO are optional to keep base env portable on macOS x86_64.
+# Core runtime dependencies for export and inference
 dependencies = [
-  "numpy",
+  "numpy<2",
   "pillow",
   "tqdm",
   "hydra-core",
@@ -17,13 +16,14 @@ dependencies = [
   "onnx",
   "onnxruntime",
   "huggingface_hub",
+  "iopath",
+  "torch",
+  "torchvision",
 ]
 
 [project.optional-dependencies]
 # Video reading via Decord is optional because macOS wheels are not provided upstream.
 video = ["decord"]
-# PyTorch is optional due to limited macOS x86_64 wheels; install with: `uv pip install .[torch]`
-torch = ["torch", "torchvision"]
 
 [project.urls]
 Homepage = "https://example.com"

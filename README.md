@@ -49,7 +49,7 @@ Option A — Cargo (development):
 1) Ensure Rust is installed
 2) From the repo root, run:
    - cargo run -p sam2_server
-3) Open http://127.0.0.1:8080
+3) Open http://127.0.0.1:8080 (binds to 0.0.0.0:8080 in containers and Spaces)
 
 Option B — Docker:
 1) Build
@@ -59,13 +59,13 @@ Option B — Docker:
 3) Open http://localhost:8080
 
 Notes
-- The server currently binds to 127.0.0.1:8080 inside the container. On some platforms you may need to bind to 0.0.0.0 to accept external traffic from a proxy. If you deploy outside Spaces and cannot reach the server, adjust the bind address accordingly.
+- The server now binds to 0.0.0.0 and honors the PORT env var in containers/Spaces (defaults to 8080 locally). This makes it reachable behind the Spaces proxy.
 
 
 ## API
 Base URL
 - Local: http://127.0.0.1:8080
-- In the Space: / (container root)
+- In the Space: / (container root) — server binds 0.0.0.0 and will respect PORT
 - Swagger: /docs
 
 Endpoints
@@ -109,12 +109,8 @@ Example curl
 
 
 ## Models
-- ONNX files included in the repository root:
-  - sam2_tiny.onnx
-  - sam2_small.onnx
-  - sam2_base_plus.onnx
-  - sam2_large.onnx
-- The Dockerfile copies these into the image; the server automatically loads the requested size on first use and caches it.
+- ONNX files available in the repository root. For the free Space deployment we include only sam2_tiny.onnx to stay under the 1 GB Space limit.
+- The Dockerfile copies sam2_tiny.onnx into the image; the server loads it on first use and caches it.
 
 
 ## Tech stack

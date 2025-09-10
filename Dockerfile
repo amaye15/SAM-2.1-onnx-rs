@@ -40,7 +40,8 @@ COPY --from=builder /app/target/release/sam2_server /usr/local/bin/sam2_server
 COPY sam2_server/static ./sam2_server/static
 
 # Copy ONNX models to workdir root (the server expects them next to /app)
-COPY sam2_large.onnx sam2_small.onnx sam2_base_plus.onnx sam2_tiny.onnx ./
+# COPY sam2_large.onnx sam2_small.onnx sam2_base_plus.onnx sam2_tiny.onnx ./
+COPY sam2_tiny.onnx ./
 
 # Run as non-root
 RUN useradd -r -u 10001 -g root -d /nonexistent -s /usr/sbin/nologin appuser \

@@ -1,0 +1,92 @@
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      space_id:
+        description: 'Hugging Face Space repo ID (owner/space-name)'
+        required: false
+        default: 'amaye15/Steroid-SAM-2.1'
+
+jobs:
+  deploy:
+    name: Upload repo to Space
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Default Space; can be overridden via workflow_dispatch input or repo variable HF_SPACE_ID
+      DEFAULT_SPACE_ID: amaye15/Steroid-SAM-2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade huggingface_hub
+
+      - name: Resolve Space ID
+        id: resolve
+        run: |
+          SPACE_ID_INPUT="${{ github.event.inputs.space_id }}"
+          SPACE_ID_VAR="${{ vars.HF_SPACE_ID }}"
+          if [ -n "$SPACE_ID_INPUT" ]; then
+            echo "space_id=$SPACE_ID_INPUT" >> $GITHUB_OUTPUT
+          elif [ -n "$SPACE_ID_VAR" ]; then
+            echo "space_id=$SPACE_ID_VAR" >> $GITHUB_OUTPUT
+          else
+            echo "space_id=$DEFAULT_SPACE_ID" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload folder to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ steps.resolve.outputs.space_id }}
+        run: |
+          python - << 'PY'
+          import os
+          from huggingface_hub import HfApi, upload_folder
+
+          token = os.environ.get('HF_TOKEN')
+          if not token:
+            raise SystemExit('HF_TOKEN secret is not set')
+
+          repo_id = os.environ['HF_SPACE_ID']
+
+          # Exclude CI files and build artifacts from the Space
+          ignore = [
+            '.git*',
+            '.github/*',
+            'target/*',
+            '__pycache__/*',
+            'sam2/__pycache__/*',
+            '*.pyc',
+          ]
+
+          print(f"Uploading current folder to https://huggingface.co/spaces/{repo_id} ...")
+          upload_folder(
+              folder_path='.',
+              repo_id=repo_id,
+              repo_type='space',
+              path_in_repo='.',
+              token=token,
+              ignore_patterns=ignore,
+              commit_message=f'CI: Sync from GitHub {os.environ.get("GITHUB_SHA", "")[0:7]}'
+          )
+          print('Upload complete.')
+          PY
+
+      - name: Done
+        run: echo "Deployment triggered to ${{ steps.resolve.outputs.space_id }}"
+

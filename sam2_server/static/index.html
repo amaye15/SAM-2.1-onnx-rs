@@ -205,25 +205,6 @@
       font-size: 14px;
       line-height: 1.2;
     }
-
-    /* Model segmented buttons */
-    .model-btn {
-      background: transparent;
-      color: var(--e2e8f0, #e2e8f0);
-      border: 1px solid var(--border);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-      letter-spacing: .2px;
-      transition: background .15s ease, color .15s ease, border-color .15s ease;
-    }
-    .model-btn:hover { background: rgba(148,163,184,0.10); }
-    .model-btn.selected {
-      background: rgba(59,130,246,0.15);
-      color: #e2e8f0;
-      border-color: rgba(59,130,246,0.4);
-    }
     /* Themed file input button */
     input[type="file"]::file-selector-button {
       margin-right: 10px;
@@ -331,14 +312,14 @@
   <div class="container">
     <div class="panel">
       <div class="row row-model">
-        <label style="margin-right:8px;">Model:</label>
-        <div id="modelButtons" class="row" style="gap:8px;">
-          <button type="button" class="model-btn selected" data-model="Tiny">Tiny</button>
-          <button type="button" class="model-btn" data-model="Small">Small</button>
-          <button type="button" class="model-btn" data-model="BasePlus">BasePlus</button>
-          <button type="button" class="model-btn" data-model="Large">Large</button>
-        </div>
-        <input type="hidden" id="model" value="Tiny" />
+        <label>Model:
+          <select id="model">
+            <option value="Tiny" selected>Tiny</option>
+            <option value="Small">Small</option>
+            <option value="BasePlus">BasePlus</option>
+            <option value="Large">Large</option>
+          </select>
+        </label>
       </div>
       <div class="row row-file">
         <input type="file" id="file" accept="image/*" />
@@ -376,14 +357,6 @@
     const statusEl = document.getElementById('status');
     const fileEl = document.getElementById('file');
     const modelEl = document.getElementById('model');
-    const modelButtons = document.querySelectorAll('.model-btn');
-    modelButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        modelButtons.forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        modelEl.value = btn.dataset.model;
-      });
-    });
     const pointsEl = document.getElementById('points');
     const timeEl = document.getElementById('time');
     const iouEl = document.getElementById('iou');

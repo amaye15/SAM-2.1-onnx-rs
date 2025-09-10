@@ -6,7 +6,6 @@ colorTo: green
 sdk: docker
 app_port: 8080
 base_path: /
-header: mini
 pinned: false
 license: mit
 short_description: A point prompt app using SAM 2.1 for generating image masks.

@@ -64,7 +64,22 @@ jobs:
 
           repo_id = os.environ['HF_SPACE_ID']
 
-          # Exclude CI files and build artifacts from the Space
+          api = HfApi()
+
+          # Remove large ONNX weights from the Space to keep under 1 GB
+          large_models = [
+            'sam2_large.onnx',
+            'sam2_base_plus.onnx',
+            'sam2_small.onnx',
+          ]
+          for p in large_models:
+            try:
+              print(f"Deleting remote file if present: {p}")
+              api.delete_file(path=p, repo_id=repo_id, repo_type='space', token=token)
+            except Exception as e:
+              print(f"  (skip) {p}: {e}")
+
+          # Exclude CI files and build artifacts from the Space and skip large models
           ignore = [
             '.git*',
             '.github/*',
@@ -72,9 +87,13 @@ jobs:
             '__pycache__/*',
             'sam2/__pycache__/*',
             '*.pyc',
+            # exclude large model files from upload
+            'sam2_large.onnx',
+            'sam2_base_plus.onnx',
+            'sam2_small.onnx',
           ]
 
-          print(f"Uploading current folder to https://huggingface.co/spaces/{repo_id} ...")
+          print(f"Uploading current folder (only tiny model) to https://huggingface.co/spaces/{repo_id} ...")
           upload_folder(
               folder_path='.',
               repo_id=repo_id,
@@ -82,7 +101,7 @@ jobs:
               path_in_repo='.',
               token=token,
               ignore_patterns=ignore,
-              commit_message=f'CI: Sync from GitHub {os.environ.get("GITHUB_SHA", "")[0:7]}'
+              commit_message=f'CI: Sync tiny-only from GitHub {os.environ.get("GITHUB_SHA", "")[0:7]}'
           )
           print('Upload complete.')
           PY

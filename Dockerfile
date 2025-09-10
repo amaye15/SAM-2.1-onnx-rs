@@ -22,9 +22,12 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 COPY sam2_server/ ./sam2_server/
 
 # 5) Build the release binary with caching
+# Note: artifacts in /app/target are on a cache mount and won't persist as image layers.
+#       We install the binary into /usr/local/bin to persist it for the next stage.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
-    cargo build -p sam2_server --release --locked
+    cargo build -p sam2_server --release --locked && \
+    install -Dm755 target/release/sam2_server /usr/local/bin/sam2_server
 
 # ---------- Runtime stage ----------
 FROM debian:bookworm-slim AS runtime
@@ -36,7 +39,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy binary and static assets
-COPY --from=builder /app/target/release/sam2_server /usr/local/bin/sam2_server
+COPY --from=builder /usr/local/bin/sam2_server /usr/local/bin/sam2_server
 COPY sam2_server/static ./sam2_server/static
 
 # Copy ONNX models to workdir root (the server expects them next to /app)
